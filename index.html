@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マイトレードダッシュボード</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+
+<!-- 初期設定オーバーレイ -->
+<div id="setupOverlay" class="overlay hidden">
+  <div class="setupCard">
+    <h1>初期設定</h1>
+    <p>このアプリを動かすには、無料のAPIキーが2つ必要です。下のリンクから登録して、キーを貼り付けてください（すべて無料枠で使えます）。</p>
+
+    <div class="setupField">
+      <label>① Finnhub APIキー（株価・ニュース用）</label>
+      <a class="setupLink" href="https://finnhub.io/register" target="_blank" rel="noopener">→ Finnhubに無料登録してキーを取得</a>
+      <input type="text" id="finnhubKeyInput" placeholder="ここにFinnhubのAPIキーを貼り付け">
+    </div>
+
+    <div class="setupField">
+      <label>② Gemini APIキー（AIアドバイス用）</label>
+      <a class="setupLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">→ Google AI Studioで無料APIキーを取得</a>
+      <input type="text" id="geminiKeyInput" placeholder="ここにGeminiのAPIキーを貼り付け">
+    </div>
+
+    <button id="saveKeysBtn" class="primaryBtn">保存してはじめる</button>
+    <p class="setupNote">キーはこのパソコンのブラウザ内だけに保存されます。外部には送信されません。</p>
+  </div>
+</div>
+
+<div class="app">
+  <!-- ヘッダー -->
+  <header class="topbar">
+    <div class="searchBox">
+      <span>&#128269;</span>
+      <input type="text" id="symbolInput" placeholder="銘柄コードを入力（例: AAPL / 日本株は7203のように4桁）">
+    </div>
+    <div id="marketStatus" class="marketStatus">
+      <span class="dot"></span> <span id="marketStatusText">確認中...</span>
+    </div>
+    <div class="clocks">
+      <div class="clock"><div class="clockLabel">NEW YORK</div><div id="clockNY" class="clockTime">--:--:--</div></div>
+      <div class="clock"><div class="clockLabel">LONDON</div><div id="clockLDN" class="clockTime">--:--:--</div></div>
+      <div class="clock"><div class="clockLabel">TOKYO</div><div id="clockTKY" class="clockTime">--:--:--</div></div>
+    </div>
+    <button id="settingsBtn" class="iconBtn" title="APIキー設定">&#9881;</button>
+  </header>
+
+  <!-- メイングリッド -->
+  <div class="mainGrid">
+    <!-- 左パネル -->
+    <div class="panel">
+      <div class="panelTitle">グローバルマーケットサマリー</div>
+      <div id="regionBadges" class="regionBadges">読み込み中...</div>
+
+      <div class="panelTitle" style="margin-top:16px;">主要インデックス</div>
+      <div id="indicesList" class="indicesList">読み込み中...</div>
+    </div>
+
+    <!-- 右パネル -->
+    <div class="panel">
+      <div class="chartHeader">
+        <div>
+          <span id="chartSymbol" class="chartSymbol">NVDA</span>
+          <span id="chartSymbolName" class="chartSymbolName">NVIDIA</span>
+        </div>
+        <div class="rangeButtons">
+          <button class="rangeBtn" data-range="1">1日</button>
+          <button class="rangeBtn active" data-range="90">3か月</button>
+          <button class="rangeBtn" data-range="180">6か月</button>
+        </div>
+      </div>
+      <div id="chartPrice" class="chartPrice">--</div>
+      <div id="lastUpdated" class="lastUpdated"></div>
+      <div id="chartContainer" class="chartContainer"></div>
+      <div id="chartError" class="errorText" style="display:none;padding:8px 0;"></div>
+      <div class="panelTitle" style="margin-top:6px;">RSI(14)</div>
+      <svg id="rsiSvg" viewBox="0 0 400 40" class="rsiSvg"></svg>
+
+      <button id="analysisBtn" class="ghostBtn" style="margin-top:12px;width:100%;">この銘柄をAI分析する（テクニカル＋情勢）</button>
+      <div id="analysisResult"></div>
+    </div>
+  </div>
+
+  <!-- ポートフォリオ -->
+  <div class="panel" style="margin-top:14px;">
+    <div class="panelTitle">保有銘柄</div>
+    <div id="portfolioList" class="portfolioList"></div>
+    <div class="addHoldingRow">
+      <input type="text" id="newSymbol" placeholder="銘柄コード（例: AAPL, 7203）">
+      <input type="number" id="newShares" placeholder="株数">
+      <input type="number" id="newCost" placeholder="取得単価">
+      <button id="addHoldingBtn" class="primaryBtn small">追加</button>
+    </div>
+  </div>
+
+  <!-- テーマ提案 -->
+  <div class="panel" style="margin-top:14px;">
+    <div class="panelTitle">今日の注目テーマ・新規銘柄の提案</div>
+    <button id="themeBtn" class="primaryBtn">最新ニュースからテーマを提案してもらう</button>
+    <div id="themeResult" class="themeResult"></div>
+  </div>
+
+  <div class="disclaimer">
+    ※ このアプリが提示する内容は投資助言ではなく、情報整理・参考情報です。投資判断はご自身の責任で行ってください。自動売買は行いません。<br>
+    ※ 日本株（4桁の証券コード）は start.command でローカルサーバーを起動しているときのみ表示できます。個別銘柄ニュースは米国株のみ対応です。
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
