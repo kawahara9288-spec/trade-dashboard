@@ -84,7 +84,8 @@ class Handler(BaseHTTPRequestHandler):
         if not APP_PASSWORD:
             return True
         cookie = self.headers.get('Cookie', '')
-        return f'auth={APP_PASSWORD}' in cookie
+        encoded = urllib.parse.quote(APP_PASSWORD, safe='')
+        return f'auth={encoded}' in cookie
 
     def _serve_static(self, path):
         if path == '/':
@@ -119,8 +120,10 @@ class Handler(BaseHTTPRequestHandler):
             given = qs.get('pw', [''])[0]
             if given and given == APP_PASSWORD:
                 # 302リダイレクトでcookieをセットしてトップへ
+                # 日本語などの合言葉でもHTTPヘッダーに安全に載せられるようURLエンコードする
+                encoded = urllib.parse.quote(APP_PASSWORD, safe='')
                 self.send_response(302)
-                self.send_header('Set-Cookie', f'auth={APP_PASSWORD}; Path=/; Max-Age=2592000; HttpOnly')
+                self.send_header('Set-Cookie', f'auth={encoded}; Path=/; Max-Age=2592000; HttpOnly')
                 self.send_header('Location', '/')
                 self.end_headers()
                 return
