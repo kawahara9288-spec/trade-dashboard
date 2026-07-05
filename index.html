@@ -76,8 +76,14 @@
       </div>
       <div id="chartPrice" class="chartPrice">--</div>
       <div id="lastUpdated" class="lastUpdated"></div>
+      <label class="trendToggle">
+        <input type="checkbox" id="trendToggle" checked> トレンド線を表示
+      </label>
       <div id="chartContainer" class="chartContainer"></div>
       <div id="chartError" class="errorText" style="display:none;padding:8px 0;"></div>
+      <div id="trendCaption" class="trendCaption">
+        点線は表示期間の値動きから計算した参考トレンド線（単回帰による延長）です。将来の株価を予測・保証するものではありません。
+      </div>
       <div class="panelTitle" style="margin-top:6px;">RSI(14)</div>
       <svg id="rsiSvg" viewBox="0 0 400 40" class="rsiSvg"></svg>
 

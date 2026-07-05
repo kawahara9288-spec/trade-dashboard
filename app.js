@@ -11,7 +11,8 @@ const LS_PORTFOLIO = 'td_portfolio';
 
 let currentSymbol = 'NVDA';
 let currentRange = 90; // days
-let chart, candleSeries;
+let chart, candleSeries, trendSeries;
+let lastCandleData = null;
 let quoteTimer = null;
 const QUOTE_REFRESH_MS = 15000;   // 選択中の銘柄の価格を更新する間隔（WebSocketが使えない場合のフォールバック）
 const PORTFOLIO_REFRESH_MS = 30000; // 保有銘柄の価格を更新する間隔
@@ -89,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('addHoldingBtn').addEventListener('click', addHolding);
   document.getElementById('themeBtn').addEventListener('click', loadThemeSuggestions);
   document.getElementById('analysisBtn').addEventListener('click', loadSymbolAnalysis);
+  document.getElementById('trendToggle').addEventListener('change', () => updateTrendLine(lastCandleData));
 
   initChart();
   updateClocks();
@@ -383,6 +385,7 @@ async function loadChartSymbol() {
     if (c.s !== 'ok' || !c.t || !c.t.length) {
       candleSeries.setData([]); // チャートのDOM自体は壊さず、データだけ空にする
       drawRSISvg([]);
+      clearTrendLine();
       chartErrorEl.textContent = 'チャートデータを取得できませんでした（start.commandでサーバーを起動しているか、銘柄コードが正しいかご確認ください）';
       chartErrorEl.style.display = 'block';
       return;
@@ -394,12 +397,68 @@ async function loadChartSymbol() {
     }));
     candleSeries.setData(data);
     drawRSISvg(calcRSI(c.c));
+    lastCandleData = data;
+    updateTrendLine(data);
   } catch (e) {
     candleSeries.setData([]);
     drawRSISvg([]);
+    clearTrendLine();
     chartErrorEl.textContent = 'チャートの取得に失敗しました';
     chartErrorEl.style.display = 'block';
   }
+}
+
+/* ---------- 参考トレンド線（単回帰による延長。将来予測を保証するものではない） ---------- */
+function clearTrendLine() {
+  if (trendSeries) {
+    try { chart.removeSeries(trendSeries); } catch { /* ignore */ }
+    trendSeries = null;
+  }
+}
+
+function updateTrendLine(candleData) {
+  clearTrendLine();
+  const toggle = document.getElementById('trendToggle');
+  if (!toggle || !toggle.checked) return;
+  if (!candleData || candleData.length < 5) return;
+
+  const closes = candleData.map(d => d.close);
+  const n = closes.length;
+  const xMean = (n - 1) / 2;
+  const yMean = closes.reduce((a, b) => a + b, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (i - xMean) * (closes[i] - yMean);
+    den += (i - xMean) * (i - xMean);
+  }
+  const slope = den ? num / den : 0;
+  const intercept = yMean - slope * xMean;
+
+  const points = candleData.map((d, i) => ({ time: d.time, value: intercept + slope * i }));
+
+  // 直近のトレンドを、土日を除いた営業日ベースで一定期間だけ延長表示する（あくまで参考の目安）
+  const FORECAST_DAYS = 14;
+  let t = candleData[n - 1].time;
+  let i = n;
+  let added = 0;
+  while (added < FORECAST_DAYS) {
+    t += 86400;
+    const day = new Date(t * 1000).getUTCDay();
+    if (day === 0 || day === 6) continue; // 土日をスキップ
+    points.push({ time: t, value: intercept + slope * i });
+    i++;
+    added++;
+  }
+
+  trendSeries = chart.addLineSeries({
+    color: '#f0a93f',
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    lastValueVisible: false,
+    priceLineVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  trendSeries.setData(points);
 }
 
 /* ---------- ポートフォリオ ---------- */
