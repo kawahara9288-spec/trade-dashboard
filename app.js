@@ -526,16 +526,35 @@ ${newsText}
 }
 
 /* ---------- ニュース ---------- */
+async function fetchYahooCompanyNews(symbol) {
+  // Yahoo Financeの検索エンドポイント経由で、銘柄名に紐づくニュースを取得（日本株にも対応）
+  try {
+    const ySym = toYahooSymbol(symbol);
+    const res = await fetch(`/api/stock-news?symbol=${encodeURIComponent(ySym)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data.news || [];
+    return items.map(n => ({ headline: n.title, url: n.link }));
+  } catch {
+    return [];
+  }
+}
+
 async function fetchCompanyNews(symbol) {
-  if (isJPSymbol(symbol)) return []; // 日本株の個別銘柄ニュースには未対応
+  if (isJPSymbol(symbol)) return fetchYahooCompanyNews(symbol);
   const key = getFinnhubKey();
   const to = new Date();
   const from = new Date(Date.now() - 7 * 86400000);
   const fmt = d => d.toISOString().slice(0, 10);
   const url = `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(symbol)}&from=${fmt(from)}&to=${fmt(to)}&token=${key}`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  return res.json();
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (Array.isArray(data) && data.length) return data;
+  } catch { /* フォールバックへ */ }
+  // Finnhubで取得できない場合はYahoo Finance経由をフォールバックとして試す
+  return fetchYahooCompanyNews(symbol);
 }
 
 async function fetchGeneralNews() {
@@ -581,17 +600,18 @@ async function loadSymbolAnalysis() {
 RSI(14): ${lastRsi}（70以上は買われすぎ、30以下は売られすぎの目安）
 20日移動平均（目安）: ${ma20}
 
-この銘柄に関する直近ニュース:
+この銘柄に関する直近ニュース（最優先で考慮すること）:
 ${companyNewsText}
 
-世界の市場・情勢に関する直近ニュース（複数のテーマが混在しています）:
+世界の市場・情勢に関する直近ニュース（参考情報。複数のテーマが混在しています）:
 ${generalNewsText}
 
 以上を踏まえて、日本語で250〜350文字程度で次を出力してください：
 1. テクニカル面から見た現状（過熱感やトレンドなど）
-2. 世界情勢・ニュース面から見た追い風/逆風
-   - 中東などの地政学リスクだけに偏らず、日本の政治・金融政策（日銀の動向など）、米国の金融政策（FRBなど）、為替、この銘柄が属する業界の動きなど、ニュース一覧の中から複数の異なるテーマを幅広く拾って言及すること
-   - 該当するニュースが無いテーマは無理に触れなくてよい
+2. ニュース面から見た追い風/逆風
+   - 最優先は「この銘柄に関する直近ニュース」。そこに具体的な材料があれば、まずそれを中心に述べること
+   - 世界情勢のニュースは、この銘柄や業界に実際に関連性がある場合のみ言及すること。中東情勢などの地政学ニュースがあっても、この銘柄と関係が薄いなら無理に絡めず、関係ない場合は触れなくてよい
+   - 銘柄固有のニュースが乏しい場合のみ、日本の政治・金融政策、米国の金融政策、為替など、関連度が高そうなテーマを補足的に取り上げること
 3. 総合した見立て（強気・弱気・中立のいずれかの傾向とその理由）
 最後に必ず「※投資助言ではありません。最終判断はご自身で行ってください」と付け加えてください。`;
 

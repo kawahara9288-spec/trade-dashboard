@@ -156,6 +156,30 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({'error': f'{e}'}, 502)
             return
 
+        if parsed.path == '/api/stock-news':
+            # 銘柄に紐づくニュースをYahoo Finance経由で取得（日本株にも対応するため）
+            qs = parse_qs(parsed.query)
+            symbol = qs.get('symbol', [''])[0]
+            if not symbol:
+                self._send_json({'error': 'symbol is required'}, 400)
+                return
+            url = (
+                'https://query1.finance.yahoo.com/v1/finance/search?'
+                f'q={urllib.parse.quote(symbol)}&newsCount=10&quotesCount=0'
+            )
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            try:
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    data = resp.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            except Exception as e:
+                self._send_json({'error': f'{e}'}, 502)
+            return
+
         self._serve_static(parsed.path)
 
     def log_message(self, format, *args):
